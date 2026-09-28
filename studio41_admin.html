@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+=====================================================================
+  STUDIO41 — ADMIN PAGE
+  Change the videos on the live Studio41 site. Saving updates the site
+  straight away: the videos are kept in a Supabase database, and every
+  page loads them from there (see studio41_live.js).
+
+  Put this file on the site next to the other pages, open it, and sign
+  in as Admin. The first time, it walks you through connecting Supabase.
+=====================================================================
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Studio41 Admin</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Work+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+  :root{
+    --void:#09080d; --void-2:#131019; --void-3:#1a1622; --void-4:#221c2d;
+    --line:rgba(237,235,243,0.14); --line-soft:rgba(237,235,243,0.07);
+    --paper:#edebf3; --paper-dim:#a7a2b8; --paper-faint:#6f6a80;
+    --violet-300:#c4b3fb; --violet-400:#a78bfa; --violet-500:#8b5cf6; --violet-600:#7133e0; --violet-900:#241547;
+    --tungsten:#f0b04f; --rec:#ff4b4b; --ok:#4ade80;
+    --font-display:'Big Shoulders Display','Arial Narrow',sans-serif;
+    --font-body:'Work Sans',-apple-system,'Segoe UI',sans-serif;
+    --font-mono:'Space Mono','Courier New',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--void);color:var(--paper);font-family:var(--font-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:var(--font-display);font-weight:800;text-transform:uppercase;letter-spacing:0.01em;margin:0;}
+  p{margin:0;}
+  a{color:var(--violet-300);}
+  button,input,select,textarea{font:inherit;color:inherit;}
+  :focus-visible{outline:2px solid var(--violet-400);outline-offset:2px;}
+  [hidden]{display:none !important;}
+  .mono{font-family:var(--font-mono);}
+  .dim{color:var(--paper-dim);}
+
+  /* ---------- buttons + inputs ---------- */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:3px;border:1px solid var(--line);
+    background:var(--void-3);color:var(--paper);cursor:pointer;font-weight:600;font-size:0.9rem;text-decoration:none;white-space:nowrap;}
+  .btn:hover{border-color:var(--violet-400);}
+  .btn:disabled{opacity:0.45;cursor:not-allowed;}
+  .btn.primary{background:var(--violet-500);border-color:var(--violet-500);color:#fff;}
+  .btn.primary:hover{background:var(--violet-600);}
+  .btn.danger{color:#ffb4b4;}
+  .btn.danger:hover{border-color:var(--rec);}
+  .btn.live{background:var(--rec);border-color:var(--rec);color:#fff;}
+  .btn.small{padding:5px 10px;font-size:0.8rem;}
+  .icon-btn{width:32px;height:32px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:3px;border:1px solid var(--line-soft);
+    background:transparent;cursor:pointer;color:var(--paper-dim);}
+  .icon-btn:hover{border-color:var(--violet-400);color:var(--paper);}
+  .icon-btn:disabled{opacity:0.25;cursor:default;border-color:var(--line-soft);}
+  label{display:block;font-size:0.8rem;font-weight:600;color:var(--paper-dim);margin-bottom:5px;}
+  input[type=text],input[type=url],input[type=password],input[type=date],input[type=datetime-local],select,textarea{
+    width:100%;padding:9px 11px;border-radius:3px;border:1px solid var(--line);background:var(--void);color:var(--paper);}
+  input:focus,select:focus,textarea:focus{border-color:var(--violet-400);outline:none;}
+  textarea{min-height:84px;resize:vertical;}
+  input[type=checkbox]{width:17px;height:17px;accent-color:var(--violet-500);vertical-align:-3px;margin:0 8px 0 0;}
+  .check{display:flex;align-items:center;color:var(--paper);font-size:0.9rem;font-weight:500;cursor:pointer;}
+  .hint{font-size:0.78rem;color:var(--paper-faint);margin-top:5px;}
+  .field{margin-bottom:16px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .inline{display:flex;gap:8px;}
+  .inline input{flex:1;min-width:0;}
+  .status-line{font-size:0.78rem;margin-top:5px;min-height:1.2em;font-family:var(--font-mono);}
+  .status-line.ok{color:var(--ok);} .status-line.err{color:#ff8a8a;} .status-line.busy{color:var(--tungsten);}
+
+  /* ---------- login ---------- */
+  .login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px;
+    background:radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.18), transparent 60%), var(--void);}
+  .login-card{width:100%;max-width:380px;background:var(--void-2);border:1px solid var(--line);border-radius:6px;padding:32px 28px;}
+  .brand{font-family:var(--font-display);font-weight:900;font-size:2.2rem;letter-spacing:0.02em;line-height:1;}
+  .brand span{color:var(--violet-400);}
+  .login-card .brand{margin-bottom:4px;}
+  .login-card .sub{font-family:var(--font-mono);font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--paper-dim);margin-bottom:26px;}
+  .login-card .btn{width:100%;margin-top:6px;padding:11px;}
+  .login-err{color:#ff8a8a;font-size:0.85rem;margin-top:12px;min-height:1.3em;}
+
+  /* ---------- app shell ---------- */
+  .top{position:sticky;top:0;z-index:20;background:rgba(9,8,13,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line-soft);}
+  .top-inner{max-width:1120px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .top .brand{font-size:1.5rem;}
+  .top .tagline{font-family:var(--font-mono);font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--paper-dim);}
+  .top .spacer{flex:1;}
+  .chip{font-family:var(--font-mono);font-size:0.7rem;padding:5px 9px;border-radius:99px;border:1px solid var(--line);color:var(--paper-dim);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .chip.on{border-color:rgba(74,222,128,0.4);color:var(--ok);}
+  .tabs{max-width:1120px;margin:0 auto;padding:0 16px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;}
+  .tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;cursor:pointer;color:var(--paper-dim);font-weight:600;white-space:nowrap;}
+  .tabs button:hover{color:var(--paper);}
+  .tabs button[aria-selected="true"]{color:var(--paper);border-bottom-color:var(--violet-500);}
+  .tabs .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--tungsten);margin-left:6px;vertical-align:1px;}
+  main{max-width:1120px;margin:0 auto;padding:26px 16px 120px;}
+
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
+  .page-head h1{font-size:2.4rem;line-height:1;}
+  .page-head .file{font-family:var(--font-mono);font-size:0.72rem;color:var(--paper-faint);margin-top:6px;}
+
+  .card{background:var(--void-2);border:1px solid var(--line-soft);border-radius:6px;margin-bottom:22px;}
+  .card-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;}
+  .card-head h2{font-size:1.35rem;}
+  .card-head .count{font-family:var(--font-mono);font-size:0.72rem;color:var(--paper-dim);border:1px solid var(--line);border-radius:99px;padding:2px 8px;}
+  .card-head .spacer{flex:1;}
+  .card-help{padding:12px 18px 0;font-size:0.85rem;color:var(--paper-dim);}
+  .card-body{padding:16px 18px;}
+
+  .rows{list-style:none;margin:0;padding:10px 10px 12px;}
+  .rows li{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:14px;align-items:center;padding:8px;border-radius:4px;}
+  .rows li:hover{background:var(--void-3);}
+  .rows li.first{background:rgba(139,92,246,0.08);}
+  .thumb{width:120px;aspect-ratio:16/9;border-radius:3px;background:var(--violet-900) center/cover no-repeat;border:1px solid var(--line-soft);position:relative;overflow:hidden;}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb .badge{position:absolute;top:4px;left:4px;font-family:var(--font-mono);font-size:0.55rem;letter-spacing:0.06em;background:var(--violet-500);color:#fff;padding:2px 5px;border-radius:2px;}
+  .thumb .badge.soon{background:var(--tungsten);color:#15111c;}
+  .thumb.empty::after{content:'no picture';position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-family:var(--font-mono);font-size:0.6rem;color:var(--paper-faint);}
+  .meta{min-width:0;}
+  .meta strong{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .meta .sub{font-size:0.8rem;color:var(--paper-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .meta .vid{font-family:var(--font-mono);font-size:0.7rem;color:var(--paper-faint);}
+  .meta .vid a{color:var(--paper-faint);}
+  .meta .warn{font-family:var(--font-mono);font-size:0.7rem;color:#ff8a8a;}
+  .actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+  .empty-list{padding:22px;text-align:center;color:var(--paper-faint);font-size:0.9rem;}
+
+  /* connect screen */
+  .connect{max-width:680px;margin:40px auto;}
+  .connect .card-body p{margin-bottom:12px;color:var(--paper-dim);}
+  .connect ol{color:var(--paper-dim);padding-left:20px;margin:0 0 16px;}
+  .connect .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .notice{border:1px solid rgba(240,176,79,0.4);background:rgba(240,176,79,0.06);color:#f5d19b;border-radius:4px;padding:12px 14px;font-size:0.88rem;margin-bottom:18px;}
+  .notice.err{border-color:rgba(255,75,75,0.45);background:rgba(255,75,75,0.07);color:#ffb4b4;}
+
+  /* live panel */
+  .onair{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-family:var(--font-mono);font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;}
+  .onair .lamp{width:10px;height:10px;border-radius:50%;background:var(--paper-faint);}
+  .onair.is-live{color:var(--rec);} .onair.is-live .lamp{background:var(--rec);box-shadow:0 0 10px var(--rec);}
+  details.settings summary{cursor:pointer;padding:14px 18px;font-weight:600;color:var(--paper-dim);}
+  details.settings[open] summary{border-bottom:1px solid var(--line-soft);}
+
+  /* save bar */
+  .savebar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--void-3);border-top:1px solid var(--violet-500);box-shadow:0 -10px 30px rgba(0,0,0,0.5);}
+  .savebar-inner{max-width:1120px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .savebar .what{flex:1;min-width:180px;font-size:0.9rem;}
+  .savebar .what b{color:var(--tungsten);}
+
+  /* dialog */
+  dialog{width:min(640px, calc(100vw - 24px));max-height:calc(100vh - 32px);overflow:auto;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--void-2);color:var(--paper);}
+  dialog::backdrop{background:rgba(5,4,8,0.75);backdrop-filter:blur(3px);}
+  .dlg-head{padding:16px 20px;border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:12px;position:sticky;top:0;background:var(--void-2);z-index:1;}
+  .dlg-head h2{font-size:1.4rem;flex:1;}
+  .dlg-body{padding:18px 20px 4px;}
+  .dlg-foot{padding:14px 20px;border-top:1px solid var(--line-soft);display:flex;gap:10px;justify-content:flex-end;align-items:center;position:sticky;bottom:0;background:var(--void-2);}
+  .dlg-foot .err{flex:1;color:#ff8a8a;font-size:0.85rem;}
+  .preview{margin-top:8px;width:200px;max-width:100%;aspect-ratio:16/9;border-radius:3px;border:1px solid var(--line-soft);background:var(--violet-900) center/cover no-repeat;}
+
+  .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:50;background:var(--paper);color:var(--void);padding:10px 16px;border-radius:4px;font-weight:600;font-size:0.9rem;
+    box-shadow:0 10px 30px rgba(0,0,0,0.5);max-width:calc(100vw - 32px);}
+  .toast.err{background:#ffb4b4;}
+
+  @media (max-width:700px){
+    .rows li{grid-template-columns:84px minmax(0,1fr);}
+    .thumb{width:84px;}
+    .rows .actions{grid-column:1 / -1;justify-content:flex-start;}
+    .row2{grid-template-columns:1fr;}
+    .page-head h1{font-size:1.9rem;}
+    .top .tagline{display:none;}
+  }
+
+  .chip.busy{border-color:rgba(240,176,79,0.5);color:var(--tungsten);}
+  /* setup screen */
+  .setup{max-width:820px;margin:0 auto;padding:40px 16px 80px;}
+  .setup h1{font-size:2.4rem;margin:18px 0 6px;}
+  .setup > p{color:var(--paper-dim);margin-bottom:22px;}
+  .setup ol.steps{padding-left:22px;margin:0;}
+  .setup ol.steps > li{margin-bottom:16px;color:var(--paper);}
+  .setup ol.steps li p, .setup ol.steps li ul{color:var(--paper-dim);font-size:0.9rem;margin:4px 0 0;}
+  .setup code{font-family:var(--font-mono);font-size:0.82rem;background:var(--void-3);padding:1px 5px;border-radius:3px;color:var(--violet-300);}
+  .setup pre{background:var(--void);border:1px solid var(--line);border-radius:4px;padding:12px;max-height:220px;overflow:auto;font-size:0.72rem;color:var(--paper-dim);white-space:pre;margin:8px 0 0;}
+</style>
+</head>
+<body>
+
+<!-- ============ FIRST-TIME SETUP (shown until studio41_live.js has the Supabase details) ============ -->
+<section class="setup" id="setupView" hidden>
+  <div class="brand">STUDIO<span>41</span></div>
+  <h1>Connect the database</h1>
+  <p>One-time setup, about 10 minutes. After this, pressing Save in the admin changes the live site straight away.</p>
+  <ol class="steps">
+    <li><b>Make a free Supabase project.</b>
+      <p>Go to <a href="https://supabase.com/dashboard" target="_blank" rel="noopener">supabase.com/dashboard</a>, choose <b>Continue with GitHub</b>, then <b>New project</b>. Name it “Studio41”, pick the region <b>Southeast Asia (Singapore)</b>, and save the database password somewhere safe (the admin doesn’t need it).</p></li>
+    <li><b>Create the admin account.</b>
+      <p>In the project: <b>Authentication → Users → Add user → Create new user</b>. Email <code>admin@studio41.tv</code>, password <code>PurplePeople</code>, and tick <b>Auto Confirm User</b>. (No email is sent. To use a different email, also change <code>adminEmail</code> in studio41_live.js.)</p></li>
+    <li><b>Turn off sign-ups</b> so nobody else can make an account:
+      <p><b>Authentication → Sign In / Providers</b> → switch off <b>Allow new users to sign up</b> → Save.</p></li>
+    <li><b>Create the video tables.</b>
+      <p><b>SQL Editor → New query</b>, paste everything below (it’s also in <code>studio41_supabase_setup.sql</code>), then press <b>Run</b>.</p>
+      <button class="btn small" type="button" id="copySql" style="margin-top:8px">Copy the SQL</button>
+      <pre id="setupSql">-- =====================================================================
+--  STUDIO41 — database setup for the admin page
+--  Run this ONCE in Supabase → SQL Editor → New query → Run,
+--  AFTER you have created the admin user (Authentication → Users).
+--  It is safe to run again (for example after adding another admin user).
+-- =====================================================================
+
+-- The video lists, one row per page (home, firsttake, originals, promos, live).
+create table if not exists public.site_videos (
+  page text primary key,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+-- Every earlier version, so a save can be undone from the admin page.
+create table if not exists public.site_videos_history (
+  id bigint generated always as identity primary key,
+  page text not null,
+  data jsonb not null,
+  saved_at timestamptz not null default now()
+);
+
+-- Who may change the videos: every user that exists when this is run.
+create table if not exists public.site_admins (
+  user_id uuid primary key references auth.users on delete cascade
+);
+insert into public.site_admins (user_id) select id from auth.users on conflict do nothing;
+
+create or replace function public.is_site_admin() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.site_admins where user_id = auth.uid());
+$$;
+
+create or replace function public.keep_video_history() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.site_videos_history (page, data, saved_at) values (old.page, old.data, old.updated_at);
+  return new;
+end $$;
+drop trigger if exists keep_video_history on public.site_videos;
+create trigger keep_video_history before update on public.site_videos
+  for each row execute function public.keep_video_history();
+
+-- Everyone can read the videos; only admins can change them or see old versions.
+alter table public.site_videos enable row level security;
+alter table public.site_videos_history enable row level security;
+alter table public.site_admins enable row level security;
+
+drop policy if exists "Anyone can read the videos" on public.site_videos;
+create policy "Anyone can read the videos" on public.site_videos for select using (true);
+drop policy if exists "Admins can add pages" on public.site_videos;
+create policy "Admins can add pages" on public.site_videos for insert to authenticated with check (public.is_site_admin());
+drop policy if exists "Admins can change pages" on public.site_videos;
+create policy "Admins can change pages" on public.site_videos for update to authenticated using (public.is_site_admin()) with check (public.is_site_admin());
+drop policy if exists "Admins can see old versions" on public.site_videos_history;
+create policy "Admins can see old versions" on public.site_videos_history for select to authenticated using (public.is_site_admin());
+
+grant select on public.site_videos to anon, authenticated;
+grant insert, update on public.site_videos to authenticated;
+grant select on public.site_videos_history to authenticated;
+</pre></li>
+    <li><b>Connect the site to it.</b>
+      <p><b>Project Settings → API Keys</b>: copy the <b>Project URL</b> (under Data API) and the <b>publishable key</b> (or the legacy <b>anon public</b> key). Paste them at the top of <code>studio41_live.js</code> where it says PASTE-YOUR-SUPABASE-… (both are safe to be public).</p></li>
+    <li><b>Upload</b> <code>studio41_live.js</code>, this admin page and the five Studio41 pages to GitHub, then open this page on the site and sign in as <b>Admin</b>.</li>
+  </ol>
+</section>
+
+<!-- ============ SIGN IN ============ -->
+<section class="login" id="loginView">
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="brand">STUDIO<span>41</span></div>
+    <div class="sub">Admin · Video manager</div>
+    <div class="field"><label for="user">Username</label><input type="text" id="user" autocomplete="username" required></div>
+    <div class="field"><label for="pass">Password</label><input type="password" id="pass" autocomplete="current-password" required></div>
+    <button class="btn primary" type="submit">Sign in</button>
+    <div class="login-err" id="loginErr" role="alert"></div>
+  </form>
+</section>
+
+<!-- ============ APP ============ -->
+<div id="appView" hidden>
+  <header class="top">
+    <div class="top-inner">
+      <div class="brand">STUDIO<span>41</span></div>
+      <div class="tagline">Admin · Video manager</div>
+      <div class="spacer"></div>
+      <span class="chip on" id="connChip">● Live</span>
+      <button class="btn small" id="pwBtn" type="button">Change password</button>
+      <button class="btn small" id="logoutBtn" type="button">Log out</button>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist"></nav>
+  </header>
+  <main id="main"></main>
+  <div class="savebar" id="savebar" hidden>
+    <div class="savebar-inner">
+      <div class="what" id="saveWhat"></div>
+      <button class="btn" id="discardBtn" type="button">Discard</button>
+      <button class="btn primary" id="saveBtn" type="button">Save &amp; publish</button>
+    </div>
+  </div>
+</div>
+
+<dialog id="editor"><form method="dialog" id="editorForm" novalidate>
+  <div class="dlg-head"><h2 id="edTitle">Edit</h2><button class="icon-btn" type="button" id="edClose" aria-label="Close">✕</button></div>
+  <div class="dlg-body" id="edBody"></div>
+  <div class="dlg-foot"><span class="err" id="edErr" role="alert"></span><button class="btn" type="button" id="edCancel">Cancel</button><button class="btn primary" type="submit" id="edSave">Done</button></div>
+</form></dialog>
+
+<dialog id="pwDialog"><form method="dialog" id="pwForm" novalidate>
+  <div class="dlg-head"><h2>Change password</h2><button class="icon-btn" type="button" data-close aria-label="Close">✕</button></div>
+  <div class="dlg-body">
+    <div class="field"><label for="pwOld">Current password</label><input type="password" id="pwOld" autocomplete="current-password"></div>
+    <div class="field"><label for="pwNew">New password</label><input type="password" id="pwNew" autocomplete="new-password"></div>
+    <div class="field"><label for="pwNew2">New password again</label><input type="password" id="pwNew2" autocomplete="new-password">
+      <div class="hint">This changes the admin account’s password everywhere.</div></div>
+  </div>
+  <div class="dlg-foot"><span class="err" id="pwErr" role="alert"></span><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit">Change password</button></div>
+</form></dialog>
+
+<input type="file" id="filePick" accept=".html,text/html" multiple hidden>
+
+<script src="studio41_live.js"></script>
+<script>
+'use strict';
+if(!window.S41){
+  document.body.innerHTML = '<p style="padding:24px;font-family:sans-serif;color:#edebf3">studio41_live.js is missing. Put it in the same folder as this page.</p>';
+  throw new Error('studio41_live.js is missing');
+}
+
+/* =====================================================================
+   SETTINGS
+   ===================================================================== */
+// The pages whose videos this admin manages.
+var FILES = {
+  home:      { name: 'studio41_revamp copy 3.html', label: 'Home' },
+  firsttake: { name: 'studio41_firsttake.html',     label: 'FirstTake' },
+  originals: { name: 'studio41_originals.html',     label: 'Originals' },
+  promos:    { name: 'studio41_promos.html',        label: 'Promos' },
+  live:      { name: 'studio41_livestreams.html',   label: 'Live Streams' }
+};
+var PROMO_KINDS = S41.util.KINDS, HOME_DEFAULT_DESC = S41.util.HOME_DEFAULT_DESC, seasonLabel = S41.util.seasonLabel, syncHero = S41.util.syncHero;
+
+/* =====================================================================
+   SMALL HELPERS
+   ===================================================================== */
+var $ = function(id){ return document.getElementById(id); };
+function h(tag, attrs, kids){
+  var el = document.createElement(tag);
+  if(attrs) Object.keys(attrs).forEach(function(k){
+    var v = attrs[k];
+    if(v == null || v === false) return;
+    if(k === 'text') el.textContent = v;
+    else if(k === 'html') el.innerHTML = v;
+    else if(k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), v);
+    else if(k === 'className') el.className = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  });
+  (kids || []).forEach(function(c){ if(c != null) el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+  return el;
+}
+function escT(s){ return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\u00a0/g, '&nbsp;'); }
+function escA(s){ return escT(s).replace(/"/g, '&quot;'); }
+function jsq(s){ return "'" + String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\r?\n/g, '\\n').replace(/<\/script/gi, '<\\/script') + "'"; }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function txt(root, sel){ var el = root.querySelector(sel); return el ? el.textContent.trim() : ''; }
+function bgUrl(style){ var m = /url\(\s*['"]?([^'")]+)['"]?\s*\)/.exec(style || ''); return m ? m[1] : ''; }
+function bgStyle(url){ return "background-image:url('" + String(url).replace(/'/g, '%27').replace(/\)/g, '%29') + "')"; }
+function pad2(n){ return (n < 10 ? '0' : '') + n; }
+function fmtDur(sec){
+  sec = Math.round(+sec || 0); if(!sec) return '';
+  var hh = Math.floor(sec / 3600), mm = Math.floor(sec % 3600 / 60), ss = sec % 60;
+  return hh ? hh + ':' + pad2(mm) + ':' + pad2(ss) : mm + ':' + pad2(ss);
+}
+function slugNum(n){ return pad2(n); }
+
+var toastTimer;
+function toast(msg, isErr){
+  var old = document.querySelector('.toast'); if(old) old.remove();
+  var t = h('div', { className: 'toast' + (isErr ? ' err' : ''), role: 'status', text: msg });
+  document.body.appendChild(t);
+  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.remove(); }, isErr ? 6500 : 3200);
+}
+
+/* ---------- Vimeo + YouTube ---------- */
+// Accepts a Vimeo link or number; returns "123456" or "123456?h=abcdef" (private-link hash kept).
+function parseVimeo(input){
+  var s = String(input || '').trim(); if(!s) return '';
+  var m = /^(\d{5,})(?:\?h=([0-9a-f]+))?$/i.exec(s); if(m) return m[1] + (m[2] ? '?h=' + m[2] : '');
+  m = /vimeo\.com\/(?:.*?\/)?(?:video\/)?(\d{5,})(?:\/([0-9a-f]{6,}))?/i.exec(s); if(!m) return null;
+  var hash = m[2] || ((/[?&]h=([0-9a-f]+)/i.exec(s) || [])[1]);
+  return m[1] + (hash ? '?h=' + hash : '');
+}
+function vimeoPage(id){ var p = String(id || '').split('?h='); return 'https://vimeo.com/' + p[0] + (p[1] ? '/' + p[1] : ''); }
+var vimeoCache = {};
+function vimeoInfo(id){
+  if(!id) return Promise.reject(new Error('No Vimeo video'));
+  if(!vimeoCache[id]) vimeoCache[id] = fetch('https://vimeo.com/api/oembed.json?width=1280&url=' + encodeURIComponent(vimeoPage(id)))
+    .then(function(r){ if(!r.ok) throw new Error(r.status === 404 ? 'Vimeo can\u2019t find that video (or it\u2019s private)' : 'Vimeo said ' + r.status); return r.json(); })
+    .then(function(d){ return { title: d.title || '', thumb: d.thumbnail_url || '', duration: d.duration || 0 }; })
+    .catch(function(e){ delete vimeoCache[id]; throw e; });
+  return vimeoCache[id];
+}
+function parseYouTube(input){
+  var s = String(input || '').trim(); if(!s) return '';
+  if(/^[\w-]{11}$/.test(s)) return s;
+  var m = /(?:[?&]v=|youtu\.be\/|\/live\/|\/embed\/|\/shorts\/)([\w-]{11})/.exec(s);
+  return m ? m[1] : null;
+}
+function ytThumb(id){ return 'https://i.ytimg.com/vi/' + encodeURIComponent(id) + '/hqdefault.jpg'; }
+function ytIdFromEmbed(u){ var m = /\/embed\/([\w-]{11})/.exec(u || ''); return m ? m[1] : ''; }
+
+/* =====================================================================
+   COPYING THE VIDEOS OUT OF A PAGE FILE
+   (used the first time, before a page's videos are in the database)
+   ===================================================================== */
+// Marker comments around the parts that hold videos. Added here if a page doesn't have them yet.
+var SERIES = ['unmasked', 'profiles', 'hotshots'];
+var MARKERS = {
+  home: [['home-episodes', /<div class="rail">\s*<div class="strip">/, /\n\s*<\/div>\s*\n\s*<\/div>\s*\n\s*<\/div>\s*\n\s*<\/section>/, '          '],
+         ['home-promos', /<div class="promo-rail" id="promoRail">/, /\n\s*<\/div>\s*\n\s*<\/div>\s*\n\s*<\/section>/, '         ']],
+  firsttake: [['ft-tabs', /<div class="channels" role="group" aria-label="Filter by season">/, /\n\s*<\/div>/, '          '],
+              ['ft-episodes', /<div class="listings" id="listings">/, /\n\s*<\/div>\s*\n\s*<div class="guide-foot">/, '        ']],
+  originals: SERIES.map(function(id){ return ['orig-' + id, new RegExp('<section class="feature" id="' + id + '">[\\s\\S]*?<div class="tickets">'), /\n\s*<\/div>\s*\n\s*<\/div>\s*\n\s*<\/div>\s*\n\s*<\/section>/, '          ']; }),
+  promos: [['promo-roster', /<div class="jerseys[^"]*" id="jerseys">/, /\n\s*<\/div>\s*\n\s*\n\s*<div class="draft">/, '        '],
+           ['promo-seasons', /<div class="seasons" role="group" aria-label="Season">/, /\n\s*<\/div>/, '          '],
+           ['promo-archive', /<div class="arc-grid" id="arcGrid">/, /\n\s*<\/div>\s*\n\s*<p class="arc-empty"/, '        ']],
+  live: []
+};
+function ensureMarkers(key, text){
+  (MARKERS[key] || []).forEach(function(m){
+    var name = m[0]; if(text.indexOf('S41-ADMIN:' + name + ':START') > -1) return;
+    var all = text.match(new RegExp(m[1].source, 'g')); if(!all || all.length !== 1) return;
+    var o = m[1].exec(text), a = o.index + o[0].length;
+    var close = new RegExp(m[2].source, 'g'); close.lastIndex = a;
+    var c = close.exec(text); if(!c) return;
+    text = text.slice(0, a) + '\n' + m[3] + '<!-- S41-ADMIN:' + name + ':START (managed by studio41_admin.html) -->' + text.slice(a, c.index).replace(/\s+$/, '') +
+           '\n' + m[3] + '<!-- S41-ADMIN:' + name + ':END -->' + text.slice(c.index);
+  });
+  return text;
+}
+
+function region(text, name){
+  var a = text.indexOf('<!-- S41-ADMIN:' + name + ':START');
+  if(a < 0) throw new Error('The page is missing the admin marker "' + name + '". Restore it from studio41_backups.');
+  var aEnd = text.indexOf('-->', a) + 3;
+  var b = text.indexOf('<!-- S41-ADMIN:' + name + ':END -->', aEnd);
+  if(b < 0) throw new Error('The page is missing the admin end marker "' + name + '".');
+  var ls = text.lastIndexOf('\n', b);
+  return { aEnd: aEnd, cut: ls > aEnd ? ls : b, inner: text.slice(aEnd, b) };
+}
+function putRegion(text, name, html){
+  var r = region(text, name);
+  return text.slice(0, r.aEnd) + (html ? '\n' + html : '') + text.slice(r.cut);
+}
+function frag(html){ return new DOMParser().parseFromString('<!DOCTYPE html><html><body>' + html + '</body></html>', 'text/html').body; }
+function parseDoc(text){ return new DOMParser().parseFromString(text, 'text/html'); }
+function tagById(text, id){
+  var re = new RegExp('<([a-zA-Z][\\w-]*)\\b[^>]*\\sid="' + id + '"[^>]*>');
+  var m = re.exec(text); if(!m) throw new Error('Could not find id="' + id + '" in the page.');
+  return m;
+}
+// Set (or remove, with value null) one attribute on the element with this id.
+function setAttrById(text, id, attr, value){
+  var m = tagById(text, id), tag = m[0];
+  var re = new RegExp('\\s' + attr + '="[^"]*"');
+  if(value == null) tag = tag.replace(re, '');
+  else if(re.test(tag)) tag = tag.replace(re, function(){ return ' ' + attr + '="' + escA(value) + '"'; });
+  else tag = tag.replace(/\s*(\/?)>$/, function(_, sl){ return ' ' + attr + '="' + escA(value) + '"' + sl + '>'; });
+  return text.slice(0, m.index) + tag + text.slice(m.index + m[0].length);
+}
+// Replace what's inside a simple element with this id (no nested tag of the same name).
+function setInnerById(text, id, html){
+  var re = new RegExp('(<([a-zA-Z][\\w-]*)\\b[^>]*\\sid="' + id + '"[^>]*>)([\\s\\S]*?)(</\\2>)');
+  var m = re.exec(text); if(!m) throw new Error('Could not find id="' + id + '" in the page.');
+  return text.slice(0, m.index) + m[1] + html + m[4] + text.slice(m.index + m[0].length);
+}
+// Pictures stored at the bottom of a page as .img-name{background-image:url("data:...")}
+function readPics(text){
+  var out = {}, re = /\.(img-[\w-]+)\s*\{\s*background-image\s*:\s*url\(\s*["']?([^"')]+)["']?\s*\)/g, m;
+  while((m = re.exec(text))) out[m[1]] = m[2];
+  return out;
+}
+function thumbOf(el){
+  if(!el) return { cls: '', url: '' };
+  var cls = Array.prototype.find.call(el.classList, function(c){ return c.indexOf('img-') === 0; }) || '';
+  return { cls: cls, url: bgUrl(el.getAttribute('style')) };
+}
+function thumbAttrs(base, t){
+  t = t || {};
+  var s = ' class="' + base + (!t.url && t.cls ? ' ' + t.cls : '') + '"';
+  if(t.url) s += ' style="' + escA(bgStyle(t.url)) + '"';
+  return s;
+}
+// A JS literal inside a <script>, e.g. var SCHEDULE = [ ... ];
+function jsBlock(text, startStr, closeStr){
+  var a = text.indexOf(startStr); if(a < 0) throw new Error('Could not find "' + startStr.trim() + '" in the page.');
+  var s = a + startStr.length;
+  var e = text.indexOf(closeStr, s); if(e < 0) throw new Error('Could not find the end of "' + startStr.trim() + '".');
+  e += closeStr.length - 1;   // keep the closing bracket, drop the ';'
+  return { start: s, end: e, src: text.slice(s, e) };
+}
+function evalLiteral(src){ return Function('"use strict"; return (' + src + ');')(); }
+
+
+var PARSE = {};
+
+PARSE.home = function(text){
+  var doc = parseDoc(text);
+  var eps = Array.prototype.map.call(frag(region(text, 'home-episodes').inner).querySelectorAll('a.ep-card'), function(a){
+    return { vimeo: a.getAttribute('data-vimeo') || '', href: a.getAttribute('href') || '', tag: a.getAttribute('data-tag') || '',
+             desc: a.getAttribute('data-desc') || '', code: txt(a, '.code'), title: txt(a, '.title'), thumb: thumbOf(a.querySelector('.ep-thumb')) };
+  });
+  var promos = Array.prototype.map.call(frag(region(text, 'home-promos').inner).querySelectorAll('.promo'), function(p){
+    var t = p.querySelector('.promo-thumb');
+    return { vimeo: p.getAttribute('data-vimeo') || '', embed: p.getAttribute('data-embed') || '', href: t ? t.getAttribute('href') || '' : '',
+             thumb: thumbOf(t), tag: txt(p, '.tag'), title: txt(p, 'h3'), len: txt(p, '.len') };
+  });
+  function t(id){ var el = doc.getElementById(id); return el ? el.textContent.trim() : ''; }
+  var mon = doc.getElementById('monitor');
+  return { episodes: eps, promos: promos, heroTitle: t('nowTitle') || 'Latest Release', heroTag: t('nowTag'), heroDesc: t('nowDesc'),
+           heroVimeo: mon ? mon.getAttribute('data-vimeo') || '' : '' };
+};
+
+PARSE.firsttake = function(text){
+  var tabs = [];
+  Array.prototype.forEach.call(frag(region(text, 'ft-tabs').inner).querySelectorAll('button'), function(b){
+    var id = b.getAttribute('data-filter'); if(id && id !== 'all') tabs.push({ id: id, label: b.textContent.trim() });
+  });
+  var eps = Array.prototype.map.call(frag(region(text, 'ft-episodes').inner).querySelectorAll('a.listing'), function(a){
+    var sc = a.querySelector('.slot-code'), first = sc && sc.firstChild;
+    return { vimeo: a.getAttribute('data-vimeo') || '', href: a.getAttribute('href') || '', group: a.getAttribute('data-group') || '',
+             ch: a.getAttribute('data-ch') || '', code: first && first.nodeType === 3 ? first.textContent.trim() : '', codeB: txt(a, '.slot-code b'),
+             thumb: thumbOf(a.querySelector('.l-thumb')), title: txt(a, 'h3'), desc: txt(a, '.l-body p') };
+  });
+  return { tabs: tabs, episodes: eps };
+};
+
+PARSE.originals = function(text){
+  var doc = parseDoc(text);
+  return { series: SERIES.map(function(id){
+    var sec = doc.getElementById(id), name = sec ? txt(sec, 'h2') : id;
+    var eps = Array.prototype.map.call(frag(region(text, 'orig-' + id).inner).querySelectorAll('.ticket'), function(t){
+      var e = { vimeo: t.getAttribute('data-vimeo') || '', dataTitle: t.getAttribute('data-title') || '', stub: txt(t, '.stub small'), num: txt(t, '.stub b'),
+                admit: txt(t, '.admit'), title: txt(t, '.t-title'), desc: txt(t, '.t-desc') };
+      if(e.dataTitle === name + ' · ' + e.title) e.dataTitle = '';   // '' = made automatically from series + title
+      return e;
+    });
+    return { id: id, name: name, episodes: eps };
+  }) };
+};
+
+PARSE.promos = function(text){
+  var roster = Array.prototype.map.call(frag(region(text, 'promo-roster').inner).querySelectorAll('.jersey'), function(j){
+    var soon = j.classList.contains('soon'), stats = j.querySelectorAll('.stats > span'), fb = j.getAttribute('data-thumb') || '';
+    var len = soon ? (stats.length ? stats[stats.length - 1].textContent.trim() : '') : (j.getAttribute('data-len') || '');
+    if(len === '--:--') len = '';
+    return { soon: soon, vimeo: j.getAttribute('data-vimeo') || '', len: len, num: txt(j, '.num'), tag: txt(j, '.j-tag'), title: txt(j, '.j-title'),
+             thumb: fb.indexOf('img-') === 0 ? { cls: fb, url: '' } : { cls: '', url: fb }, jStyle: bgUrl((j.querySelector('.j-thumb') || j).getAttribute('style')) };
+  });
+  var seasons = [];
+  Array.prototype.forEach.call(frag(region(text, 'promo-seasons').inner).querySelectorAll('button'), function(b){
+    var id = b.getAttribute('data-season'); if(id && id !== 'all') seasons.push({ id: id, label: b.textContent.trim() });
+  });
+  var archive = Array.prototype.map.call(frag(region(text, 'promo-archive').inner).querySelectorAll('.arc'), function(a){
+    var img = a.querySelector('img');
+    return { vimeo: a.getAttribute('data-vimeo') || '', season: a.getAttribute('data-season') || '', kind: a.getAttribute('data-kind') || 'sports',
+             len: a.getAttribute('data-len') || txt(a, '.arc-len'), img: img ? img.getAttribute('src') || '' : '', title: txt(a, '.arc-title') };
+  });
+  return { roster: roster, seasons: seasons, archive: archive };
+};
+
+PARSE.live = function(text){
+  var cfg = evalLiteral(jsBlock(text, 'var CONFIG = ', '\n  };').src);
+  var sched = evalLiteral(jsBlock(text, 'var SCHEDULE = ', '\n  ];').src);
+  var past = evalLiteral(jsBlock(text, 'var PAST = ', '\n  ];').src);
+  var c = {}; CFG_KEYS.forEach(function(k){ c[k] = cfg[k] != null ? cfg[k] : (k === 'extraLiveIds' ? [] : ''); });
+  return {
+    config: c,
+    schedule: sched.map(function(s){ return { start: s.start || '', mins: s.mins == null ? '' : String(s.mins), tag: s.tag || '', title: s.title || '', desc: s.desc || '' }; }),
+    past: past.map(function(p){ return { id: p.id || '', date: p.date || '', len: p.len || '', tag: p.tag || '', title: p.title || '' }; })
+  };
+};
+
+var CFG_KEYS = ['channelUrl', 'liveVideoId', 'channelId', 'apiKey', 'extraLiveIds', 'liveTitle', 'liveDescription'];
+
+/* =====================================================================
+   APP STATE
+   ===================================================================== */
+var CFG = S41.config;
+var S = { files: {}, tab: 'home', auth: null, loading: false, loadErr: '', rows: {} };
+
+function file(key){ var f = S.files[key]; return f && f.data ? f : null; }
+function markDirty(key){ S.files[key].dirty = true; updateSaveBar(); updateTabs(); }
+function dirtyKeys(){ return Object.keys(S.files).filter(function(k){ return S.files[k].dirty; }); }
+function setData(k, data, dirty){ var f = S.files[k]; f.data = data; f.orig = JSON.stringify(data); f.dirty = !!dirty; }
+
+/* ---------- signing in (a Supabase account) ---------- */
+var AUTH_KEY = 's41-auth';
+function authStore(v){
+  try{ if(v === undefined) return JSON.parse(sessionStorage.getItem(AUTH_KEY) || 'null'); if(v) sessionStorage.setItem(AUTH_KEY, JSON.stringify(v)); else sessionStorage.removeItem(AUTH_KEY); }
+  catch(e){ return null; }
+}
+function netErr(){ throw new Error('Couldn’t reach the database. Check the internet connection.'); }
+function authCall(path, body, token, method){
+  return S41.rest('/auth/v1/' + path, { method: method || 'POST', body: body, token: token }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(j){
+      if(r.ok) return j;
+      var m = j.error_description || j.msg || j.message || '';
+      if(/invalid login|invalid_credentials/i.test(m + ' ' + (j.error_code || j.error || ''))) m = 'Wrong username or password.';
+      else if(/not confirmed/i.test(m)) m = 'The admin account isn’t confirmed. In Supabase open Authentication → Users and confirm it.';
+      else if(/reauthenticat/i.test(m)) m = 'Supabase wants you to confirm by email before changing the password. Change it in Supabase (Authentication → Users) instead.';
+      var e = new Error(m || 'Supabase said ' + r.status); e.status = r.status; throw e;
+    });
+  }, netErr);
+}
+function keepSession(j){
+  S.auth = { token: j.access_token, refresh: j.refresh_token, expires: Date.now() + (j.expires_in || 3600) * 1000, email: j.user ? j.user.email : (S.auth && S.auth.email) };
+  authStore(S.auth);
+}
+function loginEmail(u){ u = String(u || '').trim(); return u.indexOf('@') > -1 ? u : u.toLowerCase() === 'admin' ? CFG.adminEmail : ''; }
+function signIn(user, pass){
+  var email = loginEmail(user);
+  if(!email) return Promise.reject(new Error('Type “Admin” or the admin account’s email.'));
+  return authCall('token?grant_type=password', { email: email, password: pass }).then(keepSession);
+}
+// A valid sign-in token (they last an hour; renewed a couple of minutes early).
+function freshToken(){
+  if(!S.auth) return Promise.reject(new Error('You’ve been signed out. Sign in again.'));
+  if(S.auth.expires - Date.now() > 120000) return Promise.resolve(S.auth.token);
+  return authCall('token?grant_type=refresh_token', { refresh_token: S.auth.refresh }).then(function(j){ keepSession(j); return S.auth.token; })
+    .catch(function(e){ if(e.status === 400 || e.status === 401) signOut(true); throw e; });
+}
+function signOut(expired){
+  var tok = S.auth && S.auth.token;
+  if(tok && !expired) authCall('logout', {}, tok).catch(function(){});
+  authStore(null); S.auth = null; S.files = {}; S.tab = 'home'; S.loadErr = '';
+  $('appView').hidden = true; $('loginView').hidden = false; $('user').focus();
+  if(expired) $('loginErr').textContent = 'You were signed out. Please sign in again.';
+}
+
+$('loginForm').addEventListener('submit', function(ev){
+  ev.preventDefault();
+  var btn = this.querySelector('button'); btn.disabled = true; $('loginErr').textContent = '';
+  signIn($('user').value, $('pass').value).then(function(){ $('pass').value = ''; showApp(); })
+    .catch(function(e){ $('loginErr').textContent = e.message; $('pass').select(); })
+    .then(function(){ btn.disabled = false; });
+});
+$('logoutBtn').addEventListener('click', function(){
+  if(dirtyKeys().length && !confirm('You have unsaved changes. Log out and lose them?')) return;
+  signOut(false);
+});
+
+/* ---------- change password ---------- */
+$('pwBtn').addEventListener('click', function(){ ['pwOld', 'pwNew', 'pwNew2'].forEach(function(id){ $(id).value = ''; }); $('pwErr').textContent = ''; $('pwDialog').showModal(); });
+Array.prototype.forEach.call(document.querySelectorAll('#pwDialog [data-close]'), function(b){ b.addEventListener('click', function(){ $('pwDialog').close(); }); });
+$('pwForm').addEventListener('submit', function(ev){
+  ev.preventDefault();
+  var oldP = $('pwOld').value, newP = $('pwNew').value;
+  if(newP.length < 6){ $('pwErr').textContent = 'Use at least 6 characters.'; return; }
+  if(newP !== $('pwNew2').value){ $('pwErr').textContent = 'The two new passwords don’t match.'; return; }
+  $('pwErr').textContent = '';
+  // Signing in again with the current password proves it's really you.
+  signIn(S.auth.email, oldP).catch(function(e){ throw new Error(e.message === 'Wrong username or password.' ? 'The current password is wrong.' : e.message); })
+    .then(function(){ return authCall('user', { password: newP }, S.auth.token, 'PUT'); })
+    .then(function(){ $('pwDialog').close(); toast('Password changed.'); })
+    .catch(function(e){ $('pwErr').textContent = e.message; });
+});
+
+/* ---------- loading the videos ---------- */
+// The page files themselves: for their stored pictures, and to copy videos from the first time.
+function fetchPage(k){
+  if(!/^https?:$/.test(location.protocol)) return Promise.resolve(null);
+  return fetch(encodeURI(FILES[k].name), { cache: 'no-store' }).then(function(r){ return r.ok ? r.text() : null; }).catch(function(){ return null; });
+}
+function usePageText(k, text){
+  var f = S.files[k]; if(!f || !text) return;
+  try{ f.pics = readPics(text); }catch(e){}
+  if(f.data) return;
+  try{ setData(k, PARSE[k](ensureMarkers(k, text)), true); f.imported = true; f.missing = false; f.error = ''; }
+  catch(e){ f.error = e.message; }
+}
+function loadAll(){
+  S.loading = true; S.loadErr = ''; S.files = {}; render();
+  return S41.loadRows().catch(function(){ throw new Error('Couldn’t read the videos from the database. Check that the setup SQL was run in Supabase (see studio41_supabase_setup.sql).'); })
+  .then(function(rows){
+    S.rows = rows;
+    return Promise.all(Object.keys(FILES).map(function(k){
+      S.files[k] = { key: k, dirty: false, pics: {}, updatedAt: rows[k] ? rows[k].updated_at : null };
+      if(rows[k]) setData(k, rows[k].data, false);
+      return fetchPage(k).then(function(text){
+        usePageText(k, text);
+        if(!S.files[k].data && !S.files[k].error) S.files[k].missing = true;
+      });
+    }));
+  })
+  .then(function(){ S.loading = false; render(); }, function(e){ S.loading = false; S.loadErr = e.message; render(); });
+}
+$('filePick').addEventListener('change', function(){
+  var byName = {};
+  Array.prototype.forEach.call(this.files, function(f){ byName[f.name] = f; });
+  var keys = Object.keys(FILES).filter(function(k){ return byName[FILES[k].name] && S.files[k]; });
+  if(!keys.length){ toast('Those aren’t the Studio41 pages. Choose files like ' + FILES.promos.name + '.', true); return; }
+  Promise.all(keys.map(function(k){ return byName[FILES[k].name].text().then(function(t){ usePageText(k, t); }); })).then(function(){ render(); updateTabs(); });
+  this.value = '';
+});
+
+/* ---------- saving (live straight away) ---------- */
+function restError(r){
+  return r.json().catch(function(){ return {}; }).then(function(j){
+    if(r.status === 401 || r.status === 403 || j.code === '42501') throw new Error('The database didn’t let this account save. Run the setup SQL again in Supabase (after creating the admin account).');
+    throw new Error(j.message || ('Database error ' + r.status));
+  });
+}
+function saveAll(){
+  var keys = dirtyKeys(); if(!keys.length) return;
+  $('saveBtn').disabled = $('discardBtn').disabled = true; $('saveBtn').textContent = 'Saving…';
+  var token;
+  freshToken().then(function(t){
+    token = t;
+    // Did someone else save these pages after they were opened here?
+    return S41.loadRows(keys);
+  }).then(function(now){
+    var clash = keys.filter(function(k){ return now[k] && now[k].updated_at !== S.files[k].updatedAt; });
+    if(clash.length && !confirm('Someone else saved ' + clash.map(function(k){ return FILES[k].label; }).join(', ') + ' after you opened the admin.\n\nSave your version over theirs? (Theirs stays in “Earlier versions”.)')) throw new Error('cancel');
+    if(keys.indexOf('home') > -1) S41.util.syncHero(S.files.home.data);
+    var stamp = new Date().toISOString();
+    return S41.rest('/rest/v1/' + CFG.table + '?on_conflict=page', { method: 'POST', token: token,
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: keys.map(function(k){ return { page: k, data: S.files[k].data, updated_at: stamp }; }) });
+  }).then(function(r){ return r.ok ? r.json() : restError(r); })
+  .then(function(rows){
+    rows.forEach(function(row){ var f = S.files[row.page]; if(!f) return; f.dirty = false; f.imported = false; f.orig = JSON.stringify(f.data); f.updatedAt = row.updated_at; });
+    toast('Saved. It’s live on the site now.');
+  }).catch(function(e){ if(e.message !== 'cancel') toast('Couldn’t save: ' + e.message, true); })
+  .then(function(){ $('saveBtn').disabled = $('discardBtn').disabled = false; render(); });
+}
+$('saveBtn').addEventListener('click', saveAll);
+$('discardBtn').addEventListener('click', function(){
+  if(!confirm('Throw away all unsaved changes?')) return;
+  dirtyKeys().forEach(function(k){ var f = S.files[k]; f.data = JSON.parse(f.orig); f.dirty = !!f.imported; });
+  render(); toast('Changes discarded.');
+});
+window.addEventListener('beforeunload', function(e){ if(dirtyKeys().length){ e.preventDefault(); e.returnValue = ''; } });
+
+/* =====================================================================
+   WHAT CAN BE EDITED: one entry per kind of video card
+   ===================================================================== */
+function vimeoField(req){ return { k: 'vimeo', label: 'Vimeo video', type: 'vimeo', required: req !== false, hint: 'Paste the Vimeo link (vimeo.com/123456789) or just the number. Private links with a code at the end work too.' }; }
+var TYPES = {
+  homeEp: {
+    noun: 'episode', file: 'home',
+    fields: [ vimeoField(),
+      { k: 'title', label: 'Title (printed under the picture)', required: true, placeholder: 'Episode 1' },
+      { k: 'code', label: 'Small label above the title', placeholder: 'SEASON 7' },
+      { k: 'tag', label: 'Tag line in the big player', placeholder: 'FIRSTTAKE · SEASON 7 · EPISODE 1' },
+      { k: 'desc', label: 'Description in the big player', type: 'textarea' },
+      { k: 'href', label: 'Episode page link (optional)', type: 'url', placeholder: 'https://studio41.tv/firsttake/…', hint: 'Used by “Open on studio41.tv”. Left empty, it links to the Vimeo page.' },
+      { k: 'thumb', label: 'Picture', type: 'thumb', auto: false } ],
+    blank: function(){ return { vimeo: '', title: '', code: '', tag: '', desc: '', href: '', thumb: { cls: '', url: '' } }; },
+    summary: function(e){ return { title: e.title, sub: e.tag || e.code }; }
+  },
+  homePromo: {
+    noun: 'promo', file: 'home',
+    fields: [ { k: 'vimeo', label: 'Video', type: 'video', required: true, hint: 'Paste a Vimeo link or number, or a YouTube link.' },
+      { k: 'title', label: 'Title', required: true },
+      { k: 'tag', label: 'Small label', placeholder: '2025–26' },
+      { k: 'len', label: 'Running time', placeholder: '1:09', half: true },
+      { k: 'thumb', label: 'Picture', type: 'thumb', auto: true } ],
+    blank: function(){ return { vimeo: '', embed: '', href: '', thumb: { cls: '', url: '' }, tag: '', title: '', len: '' }; },
+    summary: function(e){ return { title: e.title, sub: [e.tag, e.len].filter(Boolean).join(' · ') }; }
+  },
+  ftEp: {
+    noun: 'episode', file: 'firsttake',
+    fields: [ vimeoField(),
+      { k: 'title', label: 'Title', required: true, placeholder: 'Episode 1' },
+      { k: 'code', label: 'Season label', placeholder: 'SEASON 7', half: true },
+      { k: 'codeB', label: 'Episode code', placeholder: 'E01', half: true },
+      { k: 'group', label: 'Shows under the tab', type: 'select', options: function(){ return file('firsttake').data.tabs.map(function(t){ return [t.id, t.label]; }); } },
+      { k: 'desc', label: 'Description', type: 'textarea' },
+      { k: 'ch', label: 'Channel label on the TV (optional)', placeholder: 'Made automatically, e.g. S7 · E01' },
+      { k: 'href', label: 'Episode page link (optional)', type: 'url', placeholder: 'https://studio41.tv/firsttake/…' },
+      { k: 'thumb', label: 'Picture', type: 'thumb', auto: false },
+      { k: 'alsoHome', label: 'Also put it at the front of the Home page film strip (and in the big player there)', type: 'check', newOnly: true, needs: 'home' } ],
+    blank: function(){ var t = file('firsttake').data.tabs; return { vimeo: '', title: '', code: '', codeB: '', group: t[0] ? t[0].id : '', desc: '', ch: '', href: '', thumb: { cls: '', url: '' }, alsoHome: true }; },
+    summary: function(e){ return { title: e.title, sub: [e.code, e.codeB].filter(Boolean).join(' ') + (e.group ? ' · tab: ' + tabLabel(e.group) : '') }; },
+    afterAdd: function(e){
+      var add = e.alsoHome; delete e.alsoHome;
+      if(add && file('home')){
+        file('home').data.episodes.unshift(ftToHome(e)); markDirty('home');
+        toast('Also added to the Home page.');
+      }
+    }
+  },
+  ftTab: {
+    noun: 'season tab', file: 'firsttake', noThumb: true,
+    fields: [ { k: 'label', label: 'Button text', required: true, placeholder: 'S8 · 2027–28' },
+      { k: 'id', label: 'Short code', required: true, placeholder: 's8', hint: 'Lowercase letters/numbers. Episodes pick their tab by this code.' } ],
+    blank: function(){ return { id: '', label: '' }; },
+    validate: function(e, ctx){
+      if(!/^[a-z0-9-]+$/.test(e.id)) return 'The short code can only use lowercase letters, numbers and dashes.';
+      if(e.id === 'all') return '“all” is already used by the All button.';
+      if(ctx.items.some(function(t, i){ return t.id === e.id && i !== ctx.index; })) return 'Another tab already uses that code.';
+    },
+    summary: function(e){ var n = file('firsttake').data.episodes.filter(function(x){ return x.group === e.id; }).length; return { title: e.label, sub: 'code: ' + e.id + ' · ' + n + ' episode' + (n === 1 ? '' : 's') }; },
+    beforeDelete: function(e){ var n = file('firsttake').data.episodes.filter(function(x){ return x.group === e.id; }).length; return n ? n + ' episode(s) use this tab and will only show under “All”.' : ''; }
+  },
+  origEp: {
+    noun: 'episode', file: 'originals', noThumb: false,
+    fields: [ vimeoField(),
+      { k: 'title', label: 'Title', required: true },
+      { k: 'desc', label: 'One-line description (optional)', type: 'textarea' },
+      { k: 'stub', label: 'Ticket stub label', placeholder: 'EP', half: true },
+      { k: 'num', label: 'Number', placeholder: '01', half: true },
+      { k: 'admit', label: 'Small line above the title', placeholder: 'ADMIT ONE · 2026–27' },
+      { k: 'dataTitle', label: 'Title shown in the screening room (optional)', placeholder: 'Made automatically: Series · Title' } ],
+    blank: function(ctx){ return { vimeo: '', title: '', desc: '', stub: 'EP', num: slugNum(ctx.items.length + 1), admit: 'ADMIT ONE', dataTitle: '' }; },
+    summary: function(e){ return { title: (e.stub || 'EP') + ' ' + e.num + ' · ' + e.title, sub: e.desc || e.admit }; }
+  },
+  jersey: {
+    noun: 'roster promo', file: 'promos',
+    fields: [ { k: 'soon', label: 'Coming soon (no video yet: shows a dashed placeholder)', type: 'check' },
+      vimeoField(false),
+      { k: 'tag', label: 'Small label', placeholder: 'Varsity', half: true },
+      { k: 'title', label: 'Title', required: true, placeholder: 'Soccer', half: true },
+      { k: 'num', label: 'Jersey number', placeholder: '01', half: true },
+      { k: 'len', label: 'Running time', placeholder: '1:09', half: true, hint: 'The scoreboard adds these up.' },
+      { k: 'thumb', label: 'Backup picture', type: 'thumb', auto: true, hint: 'Vimeo\u2019s own picture is used when there is one. This shows before the video is out.' } ],
+    blank: function(ctx){ return { soon: false, vimeo: '', len: '', num: slugNum(ctx.items.length + 1), tag: 'Varsity', title: '', thumb: { cls: '', url: '' }, jStyle: '' }; },
+    validate: function(e){ if(!e.soon && !e.vimeo) return 'Add the Vimeo video, or tick “Coming soon”.'; },
+    summary: function(e){ return { title: [e.tag, e.title].filter(Boolean).join(' '), sub: (e.soon ? 'Coming soon' : 'Released') + (e.len ? ' · ' + e.len : ''), badge: e.soon ? 'SOON' : '', badgeClass: 'soon' }; }
+  },
+  season: {
+    noun: 'archive season', file: 'promos', noThumb: true,
+    fields: [ { k: 'label', label: 'Button text', required: true, placeholder: '2026–27' },
+      { k: 'id', label: 'Short code', required: true, placeholder: '2627', hint: 'Seasons run August to June. 2026–27 → 2627.' } ],
+    blank: function(){ var y = new Date().getMonth() >= 7 ? new Date().getFullYear() : new Date().getFullYear() - 1; return { id: String(y).slice(2) + String(y + 1).slice(2), label: y + '–' + String(y + 1).slice(2) }; },
+    validate: function(e, ctx){
+      if(!/^[a-z0-9-]+$/i.test(e.id) || e.id === 'all') return 'Use a short code like 2627.';
+      if(ctx.items.some(function(t, i){ return t.id === e.id && i !== ctx.index; })) return 'Another season already uses that code.';
+    },
+    summary: function(e){ var n = file('promos').data.archive.filter(function(x){ return x.season === e.id; }).length; return { title: e.label, sub: 'code: ' + e.id + ' · ' + n + ' promo' + (n === 1 ? '' : 's') }; },
+    beforeDelete: function(e){ var n = file('promos').data.archive.filter(function(x){ return x.season === e.id; }).length; return n ? n + ' archived promo(s) are in this season and will only show under “All”.' : ''; }
+  },
+  arc: {
+    noun: 'archive promo', file: 'promos',
+    fields: [ vimeoField(),
+      { k: 'title', label: 'Title', required: true },
+      { k: 'season', label: 'Season', type: 'select', half: true, options: function(){ return file('promos').data.seasons.map(function(s){ return [s.id, s.label]; }); } },
+      { k: 'kind', label: 'Type', type: 'select', half: true, options: function(){ return Object.keys(PROMO_KINDS).map(function(k){ return [k, PROMO_KINDS[k]]; }); } },
+      { k: 'len', label: 'Running time', placeholder: '1:09', half: true },
+      { k: 'img', label: 'Picture', type: 'image', required: true } ],
+    blank: function(){ var s = file('promos').data.seasons; return { vimeo: '', title: '', season: s[0] ? s[0].id : '', kind: 'sports', len: '', img: '' }; },
+    summary: function(e){ return { title: e.title, sub: (PROMO_KINDS[e.kind] || e.kind) + ' · ' + seasonLabel(file('promos').data, e.season) + (e.len ? ' · ' + e.len : '') }; }
+  },
+  sched: {
+    noun: 'scheduled stream', file: 'live', noThumb: true, addAt: 'end',
+    fields: [ { k: 'title', label: 'Title', required: true, placeholder: 'IASAS Soccer Friday Main Field' },
+      { k: 'start', label: 'Starts (Singapore time)', type: 'datetime', required: true, half: true },
+      { k: 'mins', label: 'Length in minutes', placeholder: '90 or TBD', half: true },
+      { k: 'tag', label: 'Small label', placeholder: 'IASAS Season One' },
+      { k: 'desc', label: 'Description', type: 'textarea' } ],
+    blank: function(){ return { start: '', mins: '', tag: '', title: '', desc: '' }; },
+    summary: function(e){ var d = new Date(e.start); return { title: e.title, sub: (isNaN(d) ? e.start : d.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + (e.tag ? ' · ' + e.tag : ''), warn: !isNaN(d) && d.getTime() + 3 * 3600e3 < Date.now() ? 'Already over: hidden on the site' : '' }; }
+  },
+  past: {
+    noun: 'previous stream', file: 'live',
+    fields: [ { k: 'id', label: 'YouTube video (optional)', type: 'youtube', hint: 'Paste the YouTube link. Leave empty and the card links to the channel instead.' },
+      { k: 'title', label: 'Title', required: true },
+      { k: 'date', label: 'Date', type: 'date', required: true, half: true },
+      { k: 'len', label: 'Length', placeholder: '1:24:10', half: true },
+      { k: 'tag', label: 'Small label', placeholder: 'FirstTake · Season 7' } ],
+    blank: function(){ var d = new Date(); return { id: '', date: d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()), len: '', tag: '', title: '' }; },
+    summary: function(e){ return { title: e.title, sub: [e.date, e.len, e.tag].filter(Boolean).join(' · '), warn: e.id ? '' : 'No YouTube video yet' }; }
+  }
+};
+function tabLabel(id){ var t = file('firsttake').data.tabs.filter(function(x){ return x.id === id; })[0]; return t ? t.label : id + ' (no tab)'; }
+function ftToHome(e){
+  return { vimeo: e.vimeo, href: e.href, code: e.code, title: e.title, desc: e.desc, thumb: clone(e.thumb),
+           tag: ['FIRSTTAKE', e.code, e.title].filter(Boolean).join(' · ').toUpperCase() };
+}
+
+/* =====================================================================
+   THE EDIT FORM (one dialog for every kind of card)
+   ===================================================================== */
+var ED = null;   // { type, ctx, item, fields: {key: {get,set,empty}} }
+function openEditor(typeKey, ctx){
+  var T = TYPES[typeKey], isNew = ctx.index < 0;
+  var item = isNew ? Object.assign(T.blank(ctx), ctx.prefill || {}) : clone(ctx.items[ctx.index]);
+  ED = { type: T, typeKey: typeKey, ctx: ctx, item: item, isNew: isNew, fields: {} };
+  $('edTitle').textContent = (isNew ? 'Add ' : 'Edit ') + T.noun;
+  $('edSave').textContent = isNew ? 'Add' : 'Done';
+  $('edErr').textContent = '';
+  var body = $('edBody'); body.innerHTML = '';
+  var pair = null;
+  T.fields.forEach(function(f){
+    if(f.newOnly && !isNew) return;
+    if(f.needs && !file(f.needs)) return;
+    var el = fieldUI(f, item);
+    if(f.half){ if(!pair){ pair = h('div', { className: 'row2' }); body.appendChild(pair); } pair.appendChild(el); if(pair.children.length === 2) pair = null; }
+    else { pair = null; body.appendChild(el); }
+  });
+  $('editor').showModal();
+  var firstInput = body.querySelector('input:not([type=checkbox]),textarea,select'); if(firstInput) firstInput.focus();
+}
+function closeEditor(){ $('editor').close(); ED = null; }
+$('edClose').addEventListener('click', closeEditor);
+$('edCancel').addEventListener('click', closeEditor);
+$('editor').addEventListener('cancel', function(){ ED = null; });
+$('editorForm').addEventListener('submit', function(ev){
+  ev.preventDefault(); if(!ED) return;
+  var T = ED.type, item = ED.item, err = '';
+  T.fields.forEach(function(f){
+    var fu = ED.fields[f.k]; if(!fu || err) return;
+    try{ fu.read(item); }catch(e){ err = e.message; }
+    if(!err && f.required && fu.empty()) err = '“' + f.label.replace(/\s*\(.*\)$/, '') + '” is needed.';
+  });
+  if(!err && T.validate) err = T.validate(item, ED.ctx) || '';
+  if(err){ $('edErr').textContent = err; return; }
+  var ctx = ED.ctx, isNew = ED.isNew;
+  if(isNew){ if(T.addAt === 'end') ctx.items.push(item); else ctx.items.unshift(item); }
+  else ctx.items[ctx.index] = item;
+  markDirty(T.file);
+  if(isNew && T.afterAdd) T.afterAdd(item);
+  if(ctx.onSaved) ctx.onSaved(item);
+  closeEditor(); render();
+});
+
+function fieldUI(f, item){
+  var id = 'f_' + f.k, wrap = h('div', { className: 'field' }), fu = null;
+  var hint = f.hint ? h('div', { className: 'hint', text: f.hint }) : null;
+  function simple(input, toVal, fromVal){
+    input.id = id; input.value = fromVal ? fromVal(item[f.k]) : (item[f.k] == null ? '' : item[f.k]);
+    wrap.appendChild(h('label', { for: id, text: f.label })); wrap.appendChild(input); if(hint) wrap.appendChild(hint);
+    return { read: function(it){ it[f.k] = toVal ? toVal(input.value) : input.value.trim(); }, empty: function(){ return !input.value.trim(); },
+             get: function(){ return input.value.trim(); }, set: function(v){ input.value = v; } };
+  }
+  switch(f.type){
+    case 'textarea': fu = simple(h('textarea', { placeholder: f.placeholder || '' })); break;
+    case 'url': fu = simple(h('input', { type: 'url', placeholder: f.placeholder || '' })); break;
+    case 'date': fu = simple(h('input', { type: 'date' })); break;
+    case 'select': {
+      var sel = h('select'), opts = f.options(), cur = item[f.k];
+      opts.forEach(function(o){ sel.appendChild(h('option', { value: o[0], text: o[1] })); });
+      if(cur && !opts.some(function(o){ return o[0] === cur; })) sel.appendChild(h('option', { value: cur, text: cur + ' (not in the list)' }));
+      fu = simple(sel); sel.value = cur || (opts[0] ? opts[0][0] : '');
+      break;
+    }
+    case 'check': {
+      var cb = h('input', { type: 'checkbox', id: id }); cb.checked = !!item[f.k];
+      wrap.appendChild(h('label', { className: 'check', for: id }, [cb, f.label]));
+      if(hint) wrap.appendChild(hint);
+      fu = { read: function(it){ it[f.k] = cb.checked; }, empty: function(){ return false; } };
+      break;
+    }
+    case 'datetime': {
+      // Stored like 2026-10-15T08:00:00+08:00; edited in the school's time zone (the offset is kept).
+      var off = (/([+-]\d\d:\d\d|Z)$/.exec(item.start || '') || [, '+08:00'])[1];
+      fu = simple(h('input', { type: 'datetime-local' }),
+        function(v){ return v ? v.slice(0, 16) + ':00' + off : ''; },
+        function(v){ return (v || '').slice(0, 16); });
+      break;
+    }
+    case 'vimeo': fu = vimeoUI(f, item, wrap, id, hint); break;
+    case 'video': fu = videoUI(f, item, wrap, id, hint); break;
+    case 'youtube': fu = youtubeUI(f, item, wrap, id, hint); break;
+    case 'thumb': fu = thumbUI(f, item, wrap, id, hint); break;
+    case 'image': fu = imageUI(f, item, wrap, id, hint); break;
+    default: fu = simple(h('input', { type: 'text', placeholder: f.placeholder || '' }));
+  }
+  ED.fields[f.k] = fu;
+  return wrap;
+}
+
+// Fill empty boxes (title, running time, picture) from Vimeo's info.
+function fillFromVimeo(info, force){
+  var F = ED && ED.fields; if(!F) return;
+  if(F.title && (force || F.title.empty())) F.title.set(info.title);
+  if(F.len && info.duration && (force || F.len.empty())) F.len.set(fmtDur(info.duration));
+  if(F.thumb && info.thumb && F.thumb.wantsUrl()) F.thumb.set(info.thumb);
+  if(F.img && info.thumb && (force || F.img.empty())) F.img.set(info.thumb);
+}
+function vimeoUI(f, item, wrap, id, hint){
+  var input = h('input', { type: 'text', id: id, placeholder: 'https://vimeo.com/123456789', value: item.vimeo ? vimeoPage(item.vimeo) : '' });
+  var status = h('div', { className: 'status-line' });
+  var btn = h('button', { className: 'btn small', type: 'button', text: 'Fill in from Vimeo' });
+  wrap.appendChild(h('label', { for: id, text: f.label }));
+  wrap.appendChild(h('div', { className: 'inline' }, [input, btn]));
+  wrap.appendChild(status); if(hint) wrap.appendChild(hint);
+  function look(force){
+    var v = parseVimeo(input.value);
+    if(v === '') { status.textContent = ''; return; }
+    if(v === null){ status.className = 'status-line err'; status.textContent = 'That doesn\u2019t look like a Vimeo link.'; return; }
+    status.className = 'status-line busy'; status.textContent = 'Asking Vimeo…';
+    vimeoInfo(v).then(function(info){
+      if(parseVimeo(input.value) !== v) return;
+      status.className = 'status-line ok'; status.textContent = '✓ ' + info.title + (info.duration ? ' · ' + fmtDur(info.duration) : '');
+      fillFromVimeo(info, force);
+    }).catch(function(e){ status.className = 'status-line err'; status.textContent = e.message + ' (you can still fill the rest in yourself)'; });
+  }
+  input.addEventListener('change', function(){ look(false); });
+  input.addEventListener('paste', function(){ setTimeout(function(){ look(false); }, 0); });
+  input.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); look(false); } });
+  btn.addEventListener('click', function(){ look(true); });
+  if(item.vimeo) setTimeout(function(){ status.className = 'status-line dim'; status.textContent = 'Vimeo number: ' + item.vimeo; }, 0);
+  return {
+    read: function(it){ var v = parseVimeo(input.value); if(v === null) throw new Error('The Vimeo link isn\u2019t right. Paste it straight from Vimeo.'); it.vimeo = v; },
+    empty: function(){ return !parseVimeo(input.value); }, get: function(){ return parseVimeo(input.value) || ''; }
+  };
+}
+// Home page promos: Vimeo or YouTube.
+function videoUI(f, item, wrap, id, hint){
+  var start = item.embed ? (ytIdFromEmbed(item.embed) ? 'https://www.youtube.com/watch?v=' + ytIdFromEmbed(item.embed) : item.embed) : (item.vimeo ? vimeoPage(item.vimeo) : '');
+  var input = h('input', { type: 'text', id: id, placeholder: 'Vimeo or YouTube link', value: start });
+  var status = h('div', { className: 'status-line' });
+  var btn = h('button', { className: 'btn small', type: 'button', text: 'Fill in' });
+  wrap.appendChild(h('label', { for: id, text: f.label }));
+  wrap.appendChild(h('div', { className: 'inline' }, [input, btn]));
+  wrap.appendChild(status); if(hint) wrap.appendChild(hint);
+  function kind(){ var s = input.value.trim(); if(!s) return null; if(/youtu/.test(s)) { var y = parseYouTube(s); return y ? { yt: y } : { bad: 1 }; } var v = parseVimeo(s); return v ? { vimeo: v } : { bad: 1 }; }
+  function look(force){
+    var k = kind(); if(!k){ status.textContent = ''; return; }
+    if(k.bad){ status.className = 'status-line err'; status.textContent = 'Paste a Vimeo or YouTube link.'; return; }
+    if(k.yt){ status.className = 'status-line ok'; status.textContent = '✓ YouTube video ' + k.yt; if(ED.fields.thumb.wantsUrl(true)) ED.fields.thumb.set(ytThumb(k.yt)); return; }
+    status.className = 'status-line busy'; status.textContent = 'Asking Vimeo…';
+    vimeoInfo(k.vimeo).then(function(info){ status.className = 'status-line ok'; status.textContent = '✓ ' + info.title; fillFromVimeo(info, force); })
+      .catch(function(e){ status.className = 'status-line err'; status.textContent = e.message; });
+  }
+  input.addEventListener('change', function(){ look(false); });
+  btn.addEventListener('click', function(){ look(true); });
+  return {
+    read: function(it){
+      var k = kind(), prevHref = it.href, prevAuto = !prevHref || prevHref === vimeoPage(it.vimeo) || /youtube\.com\/watch/.test(prevHref);
+      if(k && k.bad) throw new Error('The video link isn\u2019t right.');
+      it.vimeo = k && k.vimeo || ''; it.embed = k && k.yt ? 'https://www.youtube.com/embed/' + k.yt : '';
+      if(prevAuto) it.href = '';   // made automatically from the video
+    },
+    empty: function(){ var k = kind(); return !k || !!k.bad; }, get: function(){ var k = kind(); return k && k.vimeo || ''; }
+  };
+}
+function youtubeUI(f, item, wrap, id, hint){
+  var input = h('input', { type: 'text', id: id, placeholder: 'https://www.youtube.com/watch?v=…', value: item[f.k] ? 'https://www.youtube.com/watch?v=' + item[f.k] : '' });
+  var prev = h('div', { className: 'preview' });
+  wrap.appendChild(h('label', { for: id, text: f.label })); wrap.appendChild(input); if(hint) wrap.appendChild(hint); wrap.appendChild(prev);
+  function show(){ var y = parseYouTube(input.value); prev.style.backgroundImage = y ? 'url("' + ytThumb(y) + '")' : ''; prev.hidden = !y; }
+  input.addEventListener('input', show); show();
+  return {
+    read: function(it){ var y = parseYouTube(input.value); if(y === null) throw new Error('That isn\u2019t a YouTube link.'); it[f.k] = y; },
+    empty: function(){ return !parseYouTube(input.value); }, get: function(){ return parseYouTube(input.value) || ''; }, set: function(v){ input.value = v; show(); }
+  };
+}
+// Picture: automatic (Vimeo), a picture link, or a picture stored inside the page.
+function thumbUI(f, item, wrap, id, hint){
+  var pics = S.files[TYPES[ED.typeKey].file].pics || {}, t = item.thumb || { cls: '', url: '' };
+  var sel = h('select', { id: id });
+  if(f.auto) sel.appendChild(h('option', { value: 'auto', text: 'Automatic: Vimeo\u2019s picture' }));
+  sel.appendChild(h('option', { value: 'url', text: 'A picture link…' }));
+  Object.keys(pics).forEach(function(c){ sel.appendChild(h('option', { value: 'cls:' + c, text: 'Stored in the page: ' + c.slice(4) })); });
+  if(t.cls && !pics[t.cls]) sel.appendChild(h('option', { value: 'cls:' + t.cls, text: t.cls.slice(4) + ' (not stored: Vimeo\u2019s picture shows)' }));
+  sel.value = t.url ? 'url' : t.cls ? 'cls:' + t.cls : (f.auto ? 'auto' : 'url');
+  var url = h('input', { type: 'url', placeholder: 'https://…jpg', value: t.url || '' });
+  var grab = h('button', { className: 'btn small', type: 'button', text: 'Use Vimeo\u2019s picture' });
+  var urlRow = h('div', { className: 'inline', style: 'margin-top:8px' }, [url, grab]);
+  var prev = h('div', { className: 'preview' });
+  wrap.appendChild(h('label', { for: id, text: f.label })); wrap.appendChild(sel); wrap.appendChild(urlRow);
+  if(hint) wrap.appendChild(hint);
+  wrap.appendChild(prev);
+  function show(){
+    var v = sel.value; urlRow.hidden = v !== 'url'; prev.style.backgroundImage = '';
+    var src = v === 'url' ? url.value.trim() : v.indexOf('cls:') === 0 ? pics[v.slice(4)] : '';
+    if(src){ prev.style.backgroundImage = 'url("' + src + '")'; return; }
+    var vid = ED && ED.fields.vimeo && ED.fields.vimeo.get();
+    if(vid && (v === 'auto' || v.indexOf('cls:') === 0)) vimeoInfo(vid).then(function(i){ if(sel.value === v) prev.style.backgroundImage = 'url("' + i.thumb + '")'; }).catch(function(){});
+  }
+  sel.addEventListener('change', show); url.addEventListener('input', show);
+  grab.addEventListener('click', function(){
+    var vid = ED.fields.vimeo && ED.fields.vimeo.get(); if(!vid){ toast('Add the Vimeo video first.', true); return; }
+    vimeoInfo(vid).then(function(i){ url.value = i.thumb; show(); }).catch(function(e){ toast(e.message, true); });
+  });
+  setTimeout(show, 0);
+  return {
+    read: function(it){
+      var v = sel.value;
+      it.thumb = v === 'url' ? { cls: '', url: url.value.trim() } : v.indexOf('cls:') === 0 ? { cls: v.slice(4), url: '' } : { cls: '', url: '' };
+      if(!f.auto && !it.thumb.cls && !it.thumb.url) throw new Error('Add a picture (press “Use Vimeo\u2019s picture”).');
+    },
+    empty: function(){ return false; },
+    // true when the picture box is still empty (includeAuto: also when it's on "Automatic")
+    wantsUrl: function(includeAuto){ return !url.value.trim() && (sel.value === 'url' || (!!includeAuto && sel.value === 'auto')); },
+    set: function(v){ sel.value = 'url'; url.value = v; show(); }
+  };
+}
+function imageUI(f, item, wrap, id, hint){
+  var url = h('input', { type: 'url', id: id, placeholder: 'https://…jpg', value: item[f.k] || '' });
+  var grab = h('button', { className: 'btn small', type: 'button', text: 'Use Vimeo\u2019s picture' });
+  var prev = h('div', { className: 'preview' });
+  wrap.appendChild(h('label', { for: id, text: f.label })); wrap.appendChild(h('div', { className: 'inline' }, [url, grab]));
+  if(hint) wrap.appendChild(hint); wrap.appendChild(prev);
+  function show(){ prev.style.backgroundImage = url.value.trim() ? 'url("' + url.value.trim() + '")' : ''; }
+  url.addEventListener('input', show); show();
+  grab.addEventListener('click', function(){
+    var vid = ED.fields.vimeo && ED.fields.vimeo.get(); if(!vid){ toast('Add the Vimeo video first.', true); return; }
+    vimeoInfo(vid).then(function(i){ url.value = i.thumb; show(); }).catch(function(e){ toast(e.message, true); });
+  });
+  return { read: function(it){ it[f.k] = url.value.trim(); }, empty: function(){ return !url.value.trim(); }, get: function(){ return url.value.trim(); }, set: function(v){ url.value = v; show(); } };
+}
+
+// A list of cards with add / edit / reorder / delete.
+function listCard(cfg){
+  var T = TYPES[cfg.type], items = cfg.items, f = S.files[T.file];
+  var addBtn = h('button', { className: 'btn primary small', type: 'button', text: '+ Add ' + T.noun, onclick: function(){ openEditor(cfg.type, { items: items, index: -1 }); } });
+  var card = h('section', { className: 'card' }, [
+    h('div', { className: 'card-head' }, [h('h2', { text: cfg.title }), h('span', { className: 'count', text: String(items.length) }), h('div', { className: 'spacer' }), addBtn]),
+    cfg.help ? h('p', { className: 'card-help', text: cfg.help }) : null
+  ]);
+  var ol = h('ol', { className: 'rows' });
+  if(!items.length) ol.appendChild(h('li', { className: 'empty-list', style: 'display:block', text: 'Nothing here yet.' }));
+  items.forEach(function(it, i){
+    var sm = T.summary(it);
+    var move = function(d){ return function(){ var j = i + d; items.splice(j, 0, items.splice(i, 1)[0]); markDirty(T.file); render(); }; };
+    var li = h('li', { className: cfg.firstBadge && i === 0 ? 'first' : '' });
+    if(!T.noThumb){
+      var th = h('div', { className: 'thumb' });
+      thumbFor(it, f, th);
+      if(cfg.firstBadge && i === 0) th.appendChild(h('span', { className: 'badge', text: cfg.firstBadge }));
+      else if(sm.badge) th.appendChild(h('span', { className: 'badge ' + (sm.badgeClass || ''), text: sm.badge }));
+      li.appendChild(th);
+    } else li.style.gridTemplateColumns = 'minmax(0,1fr) auto';
+    var vid = it.vimeo ? h('div', { className: 'vid' }, ['Vimeo ', h('a', { href: vimeoPage(it.vimeo), target: '_blank', rel: 'noopener', text: it.vimeo })])
+            : it.embed ? h('div', { className: 'vid', text: 'YouTube ' + (ytIdFromEmbed(it.embed) || it.embed) })
+            : (cfg.type === 'past' && it.id) ? h('div', { className: 'vid' }, ['YouTube ', h('a', { href: 'https://www.youtube.com/watch?v=' + it.id, target: '_blank', rel: 'noopener', text: it.id })]) : null;
+    li.appendChild(h('div', { className: 'meta' }, [h('strong', { text: sm.title || '(untitled)' }), sm.sub ? h('div', { className: 'sub', text: sm.sub }) : null, vid,
+      sm.warn ? h('div', { className: 'warn', text: sm.warn }) : null]));
+    var acts = h('div', { className: 'actions' });
+    (cfg.extra || []).forEach(function(x){ if(!x.show || x.show(it)) acts.appendChild(h('button', { className: 'btn small', type: 'button', text: x.label, onclick: function(){ x.fn(it, i); } })); });
+    acts.appendChild(h('button', { className: 'icon-btn', type: 'button', 'aria-label': 'Move up', title: 'Move up', text: '↑', disabled: i === 0, onclick: move(-1) }));
+    acts.appendChild(h('button', { className: 'icon-btn', type: 'button', 'aria-label': 'Move down', title: 'Move down', text: '↓', disabled: i === items.length - 1, onclick: move(1) }));
+    acts.appendChild(h('button', { className: 'btn small', type: 'button', text: 'Edit', onclick: function(){ openEditor(cfg.type, { items: items, index: i }); } }));
+    acts.appendChild(h('button', { className: 'btn small danger', type: 'button', text: 'Remove', onclick: function(){
+      var extraWarn = T.beforeDelete ? T.beforeDelete(it) : '';
+      if(!confirm('Remove “' + (sm.title || 'this') + '”?' + (extraWarn ? '\n\n' + extraWarn : '') + '\n\n(Nothing changes on the site until you save.)')) return;
+      items.splice(i, 1); markDirty(T.file); render();
+    } }));
+    li.appendChild(acts);
+    ol.appendChild(li);
+  });
+  card.appendChild(ol);
+  return card;
+}
+function thumbFor(it, f, el){
+  var t = it.thumb || {}, src = t.url || (t.cls && f.pics[t.cls]) || it.img || (it.embed && ytIdFromEmbed(it.embed) && ytThumb(ytIdFromEmbed(it.embed))) || (it.id && ytThumb(it.id)) || (it.jStyle) || '';
+  if(src){ el.style.backgroundImage = 'url("' + src + '")'; return; }
+  if(it.vimeo) vimeoInfo(it.vimeo).then(function(i){ el.style.backgroundImage = 'url("' + i.thumb + '")'; }).catch(function(){ el.classList.add('empty'); });
+  else el.classList.add('empty');
+}
+function textCard(title, help, kids){
+  return h('section', { className: 'card' }, [h('div', { className: 'card-head' }, [h('h2', { text: title })]), help ? h('p', { className: 'card-help', text: help }) : null, h('div', { className: 'card-body' }, kids)]);
+}
+// A text box that edits a value directly (marks the page as changed as you type).
+function boundInput(label, obj, key, fileKey, opts){
+  opts = opts || {};
+  var id = 'b_' + key, input = opts.textarea ? h('textarea', { id: id }) : h('input', { type: 'text', id: id, placeholder: opts.placeholder || '' });
+  input.value = opts.show ? opts.show(obj[key]) : (obj[key] == null ? '' : obj[key]);
+  input.addEventListener('input', function(){ obj[key] = opts.parse ? opts.parse(input.value) : input.value; markDirty(fileKey); if(opts.onInput) opts.onInput(); });
+  return h('div', { className: 'field' }, [h('label', { for: id, text: label }), input, opts.hint ? h('div', { className: 'hint', text: opts.hint }) : null]);
+}
+
+var VIEWS = {
+  home: function(main, d){
+    syncHero(d);
+    main.appendChild(textCard('Big player at the top', 'The big player plays the first episode in the film strip below. When a new episode goes to the top, the words here switch to that episode\u2019s; you can then tweak them.', [
+      boundInput('Headline', d, 'heroTitle', 'home', { placeholder: 'Latest Release' }),
+      boundInput('Tag line', d, 'heroTag', 'home', { placeholder: 'FIRSTTAKE · SEASON 7 · EPISODE 1' }),
+      boundInput('Description', d, 'heroDesc', 'home', { textarea: true })
+    ]));
+    main.appendChild(listCard({ type: 'homeEp', items: d.episodes, title: 'FirstTake film strip', firstBadge: 'LATEST',
+      help: 'Newest first. Use ↑ ↓ to reorder. Adding a new episode on the FirstTake tab can put it here for you too.' }));
+    main.appendChild(listCard({ type: 'homePromo', items: d.promos, title: 'Promos carousel', help: 'The slides in the sideways promo carousel, in order.' }));
+  },
+  firsttake: function(main, d){
+    main.appendChild(listCard({ type: 'ftEp', items: d.episodes, title: 'Episode guide', firstBadge: 'ON THE TV',
+      help: 'Newest first. The first episode is the one on the TV when the page opens.',
+      extra: file('home') ? [{ label: 'Copy to Home', fn: function(it){ openEditor('homeEp', { items: file('home').data.episodes, index: -1, prefill: ftToHome(it), onSaved: function(){ toast('Added to the Home page film strip.'); } }); } }] : [] }));
+    main.appendChild(listCard({ type: 'ftTab', items: d.tabs, title: 'Season tabs', help: 'The filter buttons above the episodes (“All” is always there). Add one for each new season.' }));
+  },
+  originals: function(main, d){
+    d.series.forEach(function(s){
+      main.appendChild(listCard({ type: 'origEp', items: s.episodes, title: s.name, help: 'Tickets in the order they appear. The “' + s.episodes.length + ' EPS” on the poster updates by itself.' }));
+    });
+  },
+  promos: function(main, d){
+    main.appendChild(listCard({ type: 'jersey', items: d.roster, title: 'This season\u2019s roster',
+      help: 'The jerseys at the top of the page. Start a promo as “Coming soon”, then edit it and add the Vimeo video when it\u2019s out. At the end of the season, move them to the archive.',
+      extra: [{ label: 'Move to archive', show: function(it){ return !it.soon && it.vimeo; }, fn: function(it, i){
+        var items = d.roster;
+        openEditor('arc', { items: d.archive, index: -1, prefill: { vimeo: it.vimeo, title: [it.tag, it.title].filter(Boolean).join(' '), len: it.len },
+          onSaved: function(){ items.splice(items.indexOf(it), 1); toast('Moved to the archive.'); } });
+        var v = ED.fields.vimeo.get(); if(v) vimeoInfo(v).then(function(inf){ if(ED && ED.fields.img && ED.fields.img.empty()) ED.fields.img.set(inf.thumb); }).catch(function(){});
+      } }] }));
+    main.appendChild(listCard({ type: 'arc', items: d.archive, title: 'Season archive', help: 'Every past promo, newest first. The season and type decide which filter buttons show it.' }));
+    main.appendChild(listCard({ type: 'season', items: d.seasons, title: 'Archive seasons', help: 'The season buttons above the archive. The first one is selected when the page opens.' }));
+  },
+  live: function(main, d){
+    var c = d.config;
+    var lamp = h('div', { className: 'onair' });
+    function paintLamp(){ var on = !!c.liveVideoId; lamp.className = 'onair' + (on ? ' is-live' : ''); lamp.innerHTML = '<span class="lamp"></span>' + (on ? 'On air: the player shows your live stream' : 'Off air: the player shows a countdown to the next stream'); }
+    paintLamp();
+    var idField = boundInput('Main live stream (YouTube link)', c, 'liveVideoId', 'live', {
+      placeholder: 'https://www.youtube.com/watch?v=…  (empty = off air)',
+      show: function(v){ return v ? 'https://www.youtube.com/watch?v=' + v : ''; },
+      parse: function(v){ var y = parseYouTube(v); return y || ''; }, onInput: paintLamp,
+      hint: 'Paste the YouTube link of the stream when you go live. Clear it (or press Off air) when it ends.' });
+    var offBtn = h('button', { className: 'btn', type: 'button', text: 'Off air (clear the stream)', onclick: function(){ c.liveVideoId = ''; c.extraLiveIds = []; markDirty('live'); render(); } });
+    main.appendChild(textCard('On air now', null, [lamp, idField,
+      h('div', { className: 'row2' }, [boundInput('Stream title', c, 'liveTitle', 'live'), boundInput('Stream description', c, 'liveDescription', 'live')]),
+      boundInput('Extra live streams (optional)', c, 'extraLiveIds', 'live', {
+        placeholder: 'Other YouTube links, separated by commas',
+        show: function(v){ return (v || []).join(', '); },
+        parse: function(v){ return v.split(/[\s,]+/).map(parseYouTube).filter(Boolean); },
+        hint: 'Up to 2 more players appear next to the main one while these are live.' }),
+      h('div', { className: 'btns', style: 'display:flex;gap:10px;flex-wrap:wrap' }, [offBtn])
+    ]));
+    main.appendChild(listCard({ type: 'sched', items: d.schedule, title: 'Upcoming schedule', help: 'Streams drop off the site by themselves 3 hours after they start. The site sorts them by date.' }));
+    main.appendChild(listCard({ type: 'past', items: d.past, title: 'Previous streams', help: 'Newest first. Cards with a YouTube video play on the page; the rest link to the channel.' }));
+    var det = h('details', { className: 'card settings' }, [h('summary', { text: 'Channel settings' }), h('div', { className: 'card-body' }, [
+      boundInput('YouTube channel page', c, 'channelUrl', 'live', { placeholder: 'https://www.youtube.com/@…' }),
+      h('div', { className: 'row2' }, [
+        boundInput('Channel ID (optional)', c, 'channelId', 'live', { placeholder: 'UC…', hint: 'With an API key, extra live streams appear on their own.' }),
+        boundInput('YouTube Data API key (optional)', c, 'apiKey', 'live', { hint: 'Restrict the key to your website\u2019s address in Google Cloud.' })
+      ])
+    ])]);
+    main.appendChild(det);
+  }
+};
+
+/* =====================================================================
+   DRAWING THE SCREENS
+   ===================================================================== */
+function render(){
+  var main = $('main'); main.innerHTML = '';
+  $('connChip').textContent = '● Live' + (S.auth && S.auth.email ? ' · ' + S.auth.email : '');
+  updateSaveBar(); updateTabs();
+  if(S.loading){ main.appendChild(h('div', { className: 'empty-list', text: 'Loading the videos…' })); return; }
+  if(S.loadErr){
+    main.appendChild(h('div', { className: 'notice err', text: S.loadErr }));
+    main.appendChild(h('button', { className: 'btn', type: 'button', text: 'Try again', onclick: loadAll }));
+    return;
+  }
+  if(S.tab === 'history'){ main.appendChild(pageHead('Earlier versions')); VIEWS.history(main); return; }
+  var f = S.files[S.tab]; if(!f) return;
+  main.appendChild(pageHead(FILES[S.tab].label, FILES[S.tab].name, f.data ? encodeURI(FILES[S.tab].name) : ''));
+  if(f.error) main.appendChild(h('div', { className: 'notice err', text: 'This page file couldn’t be read: ' + f.error }));
+  if(!f.data){
+    main.appendChild(textCard('Copy the videos from the page', 'This page has no videos in the database yet. Choose the page file (' + FILES[S.tab].name + ') so the admin can copy the videos it shows now. You can pick all five pages at once. Then press Save.', [
+      h('button', { className: 'btn primary', type: 'button', text: 'Choose the page files', onclick: function(){ $('filePick').click(); } })
+    ]));
+    return;
+  }
+  if(f.imported) main.appendChild(h('div', { className: 'notice', text: 'These videos were copied from the page file and aren’t in the database yet. Press “Save & publish” to put them there. Until then the site keeps showing the videos written into the page.' }));
+  VIEWS[S.tab](main, f.data);
+}
+function pageHead(title, sub, view){
+  return h('div', { className: 'page-head' }, [
+    h('div', null, [h('h1', { text: title }), sub ? h('div', { className: 'file', text: sub }) : null]),
+    view ? h('a', { className: 'btn', href: view, target: '_blank', rel: 'noopener', text: 'View page ↗' }) : null
+  ]);
+}
+function updateTabs(){
+  var nav = $('tabs'); nav.innerHTML = '';
+  Object.keys(FILES).concat(['history']).forEach(function(k){
+    var f = S.files[k];
+    var b = h('button', { type: 'button', role: 'tab', 'aria-selected': String(S.tab === k), onclick: function(){ S.tab = k; render(); window.scrollTo(0, 0); } },
+      [k === 'history' ? 'Earlier versions' : FILES[k].label, f && f.dirty ? h('span', { className: 'dot', title: 'Unsaved changes' }) : null]);
+    if(k !== 'history' && f && !f.data) b.style.opacity = '0.45';
+    nav.appendChild(b);
+  });
+}
+function updateSaveBar(){
+  var keys = dirtyKeys();
+  $('savebar').hidden = !keys.length;
+  if(keys.length){
+    $('saveWhat').innerHTML = 'Unsaved changes on <b>' + keys.map(function(k){ return escT(FILES[k].label); }).join(', ') + '</b>' +
+      '<br><span class="dim" style="font-size:0.8rem">Saving updates the live site straight away.</span>';
+    if(!$('saveBtn').disabled) $('saveBtn').textContent = 'Save & publish';
+  }
+}
+
+VIEWS.history = function(main){
+  var ol = h('ol', { className: 'rows' }, [h('li', { className: 'empty-list', style: 'display:block', text: 'Loading…' })]);
+  main.appendChild(h('section', { className: 'card' }, [
+    h('div', { className: 'card-head' }, [h('h2', { text: 'Saved versions' })]),
+    h('p', { className: 'card-help', text: 'Every save keeps a copy of the version it replaced. “Bring back” loads one into the editor; press Save to put it on the site again.' }),
+    ol
+  ]));
+  freshToken().then(function(t){ return S41.rest('/rest/v1/site_videos_history?select=id,page,saved_at&order=saved_at.desc&limit=60', { token: t }); })
+    .then(function(r){ return r.ok ? r.json() : restError(r); })
+    .then(function(rows){
+      ol.innerHTML = '';
+      rows = rows.filter(function(row){ return FILES[row.page]; });
+      if(!rows.length) ol.appendChild(h('li', { className: 'empty-list', style: 'display:block', text: 'Nothing yet. A page’s earlier version appears here once it has been saved twice.' }));
+      rows.forEach(function(row){
+        ol.appendChild(h('li', { style: 'grid-template-columns:minmax(0,1fr) auto' }, [
+          h('div', { className: 'meta' }, [h('strong', { text: FILES[row.page].label }),
+            h('div', { className: 'sub', text: 'The version from ' + new Date(row.saved_at).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) })]),
+          h('div', { className: 'actions' }, [h('button', { className: 'btn small', type: 'button', text: 'Bring back', onclick: function(){ restore(row); } })])
+        ]));
+      });
+    })
+    .catch(function(e){ ol.innerHTML = ''; ol.appendChild(h('li', { className: 'empty-list', style: 'display:block', text: e.message })); });
+};
+function restore(row){
+  var f = S.files[row.page]; if(!f) return;
+  if(f.dirty && !confirm('You have unsaved changes on ' + FILES[row.page].label + '. Replace them with this version?')) return;
+  freshToken().then(function(t){ return S41.rest('/rest/v1/site_videos_history?select=data&id=eq.' + encodeURIComponent(row.id), { token: t }); })
+    .then(function(r){ return r.ok ? r.json() : restError(r); })
+    .then(function(rows){
+      if(!rows[0]) throw new Error('That version couldn’t be found.');
+      if(!f.orig) f.orig = JSON.stringify(rows[0].data);
+      f.data = rows[0].data; f.error = ''; f.missing = false; f.dirty = true;
+      S.tab = row.page; render(); window.scrollTo(0, 0);
+      toast('Loaded. Press “Save & publish” to put this version back on the site.');
+    }).catch(function(e){ toast(e.message, true); });
+}
+
+$('copySql').addEventListener('click', function(){
+  var t = $('setupSql').textContent;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ toast('Copied.'); }, function(){ toast('Select the text and copy it.', true); });
+});
+
+/* =====================================================================
+   START
+   ===================================================================== */
+function showApp(){
+  $('loginView').hidden = true; $('setupView').hidden = true; $('appView').hidden = false;
+  loadAll();
+}
+if(!S41.configured){ $('loginView').hidden = true; $('setupView').hidden = false; }
+else { S.auth = authStore(); if(S.auth) showApp(); else $('user').focus(); }
+</script>
+</body>
+</html>
